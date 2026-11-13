@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔨 Аукцион — торгуйся!</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',Arial,sans-serif; min-height:100vh; color:#e8e8f0;
+  background:linear-gradient(135deg,#1a1f36 0%,#232a4d 50%,#1a1f36 100%); }
+.screen { display:none; min-height:100vh; }
+.screen.active { display:block; }
+
+/* СТАРТ */
+#start { display:flex; align-items:center; justify-content:center; }
+.start-card { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+  border-radius:24px; padding:48px 56px; text-align:center; max-width:460px; box-shadow:0 20px 60px rgba(0,0,0,.45); }
+.start-card h1 { font-size:40px; margin-bottom:12px; }
+.start-card p { color:#aab0d0; margin-bottom:28px; font-size:17px; }
+.start-card input { width:100%; padding:14px 18px; border-radius:12px; border:1px solid rgba(255,255,255,.2);
+  background:rgba(0,0,0,.3); color:#fff; font-size:18px; text-align:center; outline:none; }
+.start-card input:focus { border-color:#f5b73e; }
+.btn { border:none; border-radius:12px; cursor:pointer; font-size:17px; font-weight:600; transition:.15s; }
+.btn:hover { filter:brightness(1.15); transform:translateY(-1px); }
+.btn-start { width:100%; margin-top:16px; padding:16px; font-size:20px;
+  background:linear-gradient(135deg,#f5b73e,#e8960c); color:#2a1c00; box-shadow:0 6px 20px rgba(245,183,62,.35); }
+.btn-start:disabled { opacity:.4; cursor:not-allowed; }
+.join-hint { margin-top:16px; font-size:13px; color:#8a90b8; }
+
+/* ИГРА */
+#game { display:none; }
+.topbar { display:flex; align-items:center; justify-content:space-between; padding:12px 24px;
+  background:rgba(0,0,0,.3); border-bottom:1px solid rgba(255,255,255,.1); gap:12px; }
+.topbar .lot { font-size:18px; font-weight:700; }
+.topbar .money { font-size:18px; font-weight:700; color:#7ee787; }
+.btn-exit { background:#c0392b; color:#fff; padding:9px 16px; font-size:14px; }
+.main { display:flex; height:calc(100vh - 61px); }
+.left { width:50%; padding:28px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:14px; border-right:1px solid rgba(255,255,255,.08); }
+.item-emoji { font-size:110px; line-height:1; filter:drop-shadow(0 10px 25px rgba(0,0,0,.5)); }
+.item-name { font-size:30px; font-weight:700; color:#f5d67a; }
+.item-desc { color:#aab0d0; max-width:420px; font-size:15px; }
+.bid-box { background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.12); border-radius:16px; padding:18px 34px; min-width:300px; }
+.bid-price { font-size:38px; font-weight:800; color:#fff; }
+.bid-leader { color:#f5b73e; font-weight:600; margin-top:2px; }
+.bid-none { color:#8a90b8; font-size:14px; margin-top:2px; }
+.timerbar { width:100%; height:8px; border-radius:6px; background:rgba(255,255,255,.12); margin-top:12px; overflow:hidden; }
+.timerfill { height:100%; background:linear-gradient(90deg,#7ee787,#f5b73e,#e05252); width:100%; transition:width .3s linear; }
+.controls { display:flex; gap:10px; margin-top:4px; flex-wrap:wrap; justify-content:center; }
+.bet-btn { background:#3a4a8c; color:#fff; padding:13px 22px; font-size:17px; }
+.btn-pass { background:#4a4f66; color:#dfe3f5; padding:13px 22px; font-size:17px; }
+.bet-btn:disabled, .btn-pass:disabled { opacity:.35; cursor:not-allowed; transform:none; }
+.sold-banner { font-size:22px; font-weight:700; color:#7ee787; min-height:28px; }
+.no-money-hint { color:#f0a05a; font-size:14px; }
+.portfolio { color:#aab0d0; font-size:13px; }
+
+/* ЧАТ */
+.right { width:50%; display:flex; flex-direction:column; background:rgba(0,0,0,.25); }
+.chat-head { padding:12px 20px; font-weight:700; font-size:17px; border-bottom:1px solid rgba(255,255,255,.1); }
+.chat-log { flex:1; overflow-y:auto; padding:14px 18px; display:flex; flex-direction:column; gap:8px; }
+.msg { max-width:85%; padding:8px 13px; border-radius:14px; font-size:14px; line-height:1.4; word-wrap:break-word; }
+.msg.me { align-self:flex-end; background:#3a4a8c; }
+.msg.other { align-self:flex-start; background:rgba(255,255,255,.1); }
+.msg.sys { align-self:center; background:rgba(245,183,62,.15); color:#f5d67a; font-size:13px; text-align:center; }
+.msg.bot { align-self:flex-start; background:rgba(192,57,43,.25); border:1px solid rgba(192,57,43,.4); }
+.msg .who { font-weight:700; font-size:12px; opacity:.85; display:block; margin-bottom:2px; }
+.chat-input { display:flex; padding:12px; gap:8px; border-top:1px solid rgba(255,255,255,.1); }
+.chat-input input { flex:1; padding:11px 15px; border-radius:10px; border:1px solid rgba(255,255,255,.15);
+  background:rgba(0,0,0,.35); color:#fff; font-size:15px; outline:none; }
+.chat-input button { background:#f5b73e; color:#2a1c00; padding:11px 18px; font-size:16px; }
+
+/* ФИНАЛ */
+#final { display:flex; align-items:center; justify-content:center; }
+.final-card { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:24px;
+  padding:40px 48px; max-width:640px; width:92%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.45); }
+.final-card h1 { font-size:34px; margin-bottom:8px; }
+.final-card p { color:#aab0d0; margin-bottom:20px; }
+table.results { width:100%; border-collapse:collapse; margin-bottom:22px; }
+.results th, .results td { padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.1); font-size:15px; }
+.results th { color:#f5d67a; font-size:13px; text-transform:uppercase; letter-spacing:.5px; }
+.results .gold { color:#f5d67a; font-weight:700; }
+.btn-again { background:linear-gradient(135deg,#f5b73e,#e8960c); color:#2a1c00; padding:14px 34px; font-size:18px; }
+@media (max-width:800px){ .main{flex-direction:column; height:auto;} .left,.right{width:100%;} .left{min-height:55vh;} .right{height:45vh;} }
+</style>
+</head>
+<body>
+
+<!-- СТАРТ -->
+<div id="start" class="screen active">
+  <div class="start-card">
+    <h1>🔨 Аукцион</h1>
+    <p>Торгуйся за сокровища! На старте у тебя <b>$100</b>.<br>Боты не знают настоящих цен — угадай лучше них!</p>
+    <input id="nameInput" maxlength="16" placeholder="Введи своё имя" autocomplete="off">
+    <button class="btn btn-start" id="startBtn" disabled>🔨 Начать торги</button>
+    <div class="join-hint" id="joinHint"></div>
+  </div>
+</div>
+
+<!-- ИГРА -->
+<div id="game" class="screen">
+  <div class="topbar">
+    <span class="lot" id="lotInfo">Лот 1/10</span>
+    <span class="money" id="moneyInfo">💰 $100</span>
+    <button class="btn btn-exit" id="exitBtn">🚪 Продать вещи и выйти</button>
+  </div>
+  <div class="main">
+    <div class="left">
+      <div class="item-emoji" id="itemEmoji">🎁</div>
+      <div class="item-name" id="itemName">—</div>
+      <div class="item-desc" id="itemDesc">—</div>
+      <div class="bid-box">
+        <div class="bid-price" id="bidPrice">$0</div>
+        <div class="bid-leader" id="bidLeader" style="display:none"></div>
+        <div class="bid-none" id="bidNone">Ставок ещё не было</div>
+        <div class="timerbar"><div class="timerfill" id="timerFill"></div></div>
+      </div>
+      <div class="sold-banner" id="soldBanner"></div>
+      <div class="controls">
+        <button class="btn bet-btn" data-add="5">+5</button>
+        <button class="btn bet-btn" data-add="10">+10</button>
+        <button class="btn bet-btn" data-add="20">+20</button>
+        <button class="btn btn-pass" id="passBtn">Пас</button>
+      </div>
+      <div class="no-money-hint" id="noMoneyHint" style="display:none">Денег не хватает! Можно продать вещи и выйти ⤴</div>
+      <div class="portfolio" id="portfolio"></div>
+    </div>
+    <div class="right">
+      <div class="chat-head">💬 Чат аукциона</div>
+      <div class="chat-log" id="chatLog"></div>
+      <div class="chat-input">
+        <input id="chatInput" maxlength="120" placeholder="Написать сообщение…" autocomplete="off">
+        <button class="btn" id="chatSend">➤</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ФИНАЛ -->
+<div id="final" class="screen">
+  <div class="final-card">
+    <h1>🏁 Итоги аукциона</h1>
+    <p>Настоящие цены раскрыты!</p>
+    <table class="results">
+      <thead><tr><th>#</th><th>Игрок</th><th>Деньги</th><th>Вещи (реал. цена)</th><th>Итог</th></tr></thead>
+      <tbody id="resultsBody"></tbody>
+    </table>
+    <button class="btn btn-again" id="againBtn">🔄 Играть ещё раз</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ================== ДАННЫЕ ==================
+const LOTS = [
+  {e:'🏺',n:'Ваза династии Мин',d:'Фарфоровая ваза XVI века. Владелец клянётся — из самого дворца императора.',p:95},
+  {e:'⌚',n:'Золотые часы «Летящий в облаках»',d:'Покоятся в бархатном футляре. Тикают подозрительно точно.',p:60},
+  {e:'🎻',n:'Скрипка старого мастера',d:'Секрет волшебника: звучит тем лучше, чем дешевле кажется.',p:120},
+  {e:'💎',n:'Бриллиант «Слеза пустыни»',d:'23 карата. Блистает так, что глаза слезятся — то ли от красоты, то ли от цены.',p:150},
+  {e:'🗺️',n:'Карта сокровищ капитана Флинта',d:'Косяк правда, половина — ложь. Но какая половина?',p:40},
+  {e:'🗿',n:'Древняя статуэтка с острова',d:'Мистер Стоун просил передавать привет. Аукционист — не спрашивать.',p:75},
+  {e:'🏆',n:'Кубок чемпиона 1908 года',d:'Серебро с историей. На дне — недопитый шампанского след.',p:35},
+  {e:'📜',n:'Свиток с автографом Шекспира',d:'Подлинность сомнительна. Зато подпись — вылитая!',p:85},
+  {e:'💍',n:'Кольцо графини де Ля Фер',d:'Сапфир размером с голубиное яйцо. Графиня не узнает… наверно.',p:110},
+  {e:'👑',n:'Корона султана',d:'Финальный лот! Рубины, изумруды и одна гвоздика от прошлых владельцев.',p:180}
+];
+const BOTS = [
+  {n:'Борис', greed:1.25, shy:0.35, phrases:['Беру! Это раритет!','Хм… ну ладно, рискну.','Я в этом разбираюсь, честно.']},
+  {n:'Марго', greed:0.85, shy:0.2, phrases:['Рискну!','Эта вещь — просто мечта.','Перебиваю, господа.']},
+  {n:'Гоша', greed:1.5, shy:0.5, phrases:['Дороговато… но я подумаю.','Да ладно, за такие деньги?','Ну заяц, держись.']},
+  {n:'Нина', greed:0.7, shy:0.15, phrases:['Тише всех буду — и выиграю.','Скромность — мой капитал.','Интересный лот…']}
+];
+const REGRETS = ['Эх, жадничать не стоит…','Пусть забирает, у меня и так всё есть.','Что-то дороговато для меня.'];
+const LOST_BIDS = ['Перебили меня!','Ну ничего, ещё впереди.','Эх…','Господа, а можно по-честному?'];
+
+// ================== СОСТОЯНИЕ ==================
+const KEY = 'auction_state_v1';
+let S = null;                    // текущее состояние игры
+let myToken = null;              // id этой вкладки
+let myName = null;               // имя игрока этой вкладки
+let isHost = false;
+let lastRenderedVer = -1;
+let lastChatLen = -1;
+
+function load(){ try{ S = JSON.parse(localStorage.getItem(KEY)); }catch(e){ S = null; } }
+function save(){ localStorage.setItem(KEY, JSON.stringify(S)); }
+function newToken(){ return 'tab_' + Math.random().toString(36).slice(2,10); }
+function myPlayer(){ return (S && S.players && myName) ? S.players[myName] : null; }
+
+// ================== СТАРТ ==================
+const nameInput = document.getElementById('nameInput');
+const startBtn = document.getElementById('startBtn');
+const joinHint = document.getElementById('joinHint');
+
+nameInput.addEventListener('input', () => { startBtn.disabled = nameInput.value.trim().length < 2; });
+nameInput.addEventListener('keydown', e => { if(e.key === 'Enter' && !startBtn.disabled) startBtn.click(); });
+
+startBtn.addEventListener('click', () => {
+  myName = nameInput.value.trim();
+  sessionStorage.setItem('auction_name', myName);
+  if(!myToken){ myToken = newToken(); sessionStorage.setItem('auction_token', myToken); }
+  load();
+  if(!S || S.finished){
+    // создаём новую игру, становимся хостом
+    S = {
+      hostToken: myToken, hostTs: Date.now(), version: 1, finished: false,
+      lotIdx: -1, players: {}, chat: [], currentBid: 0, leader: null, leaderName: null,
+      lastBidTs: Date.now(), waitingNext: false, nextLotTs: 0, schedule: [], joinedMid: true
+    };
+    addPlayer(myName, false);
+    sysMsg('🔨 Аукцион открыт! Ставки делаем смело.');
+    save();
+  } else {
+    if(!S.players[myName]){ addPlayer(myName, true); save(); }
+  }
+  show('game'); renderAll(true);
+});
+
+function addPlayer(name, announce){
+  S.players[name] = { balance:100, items:[], exited:false, isBot:false };
+  if(announce) sysMsg('🤝 ' + name + ' присоединился к торгам!');
+}
+
+// ================== ХОД ИГРЫ ==================
+function startLot(){
+  S.lotIdx++;
+  if(S.lotIdx >= LOTS.length){ finish(); return; }
+  const lot = LOTS[S.lotIdx];
+  S.currentBid = 0; S.leader = null; S.leaderName = null;
+  S.lastBidTs = Date.now(); S.waitingNext = false;
+  sysMsg('— Лот ' + (S.lotIdx+1) + ': ' + lot.e + ' ' + lot.n + ' —');
+  // расписание действий ботов
+  S.schedule = [];
+  BOTS.forEach(b => {
+    const est = lot.p * (0.45 + Math.random()*1.15);          // бот НЕ знает цену
+    const acts = 1 + Math.floor(Math.random()*2);
+    for(let i=0;i<acts;i++){
+      const t = Date.now() + 1200 + Math.random()*7000;
+      S.schedule.push({t, bot:b.n, est, done:false});
+    }
+  });
+  S.schedule.sort((a,b)=>a.t-b.t);
+  save();
+}
+
+function hostTick(){
+  if(!S || S.finished || S.waitingNext) return;
+  const now = Date.now();
+  const lot = LOTS[S.lotIdx];
+  // действия ботов по расписанию
+  S.schedule.forEach(a => {
+    if(a.done || a.t > now) return;
+    a.done = true;
+    const bot = S.players[a.bot];
+    const inc = [5,10,20][Math.floor(Math.random()*3)];
+    const target = (S.leaderName ? S.currentBid : 0) + inc;
+    if(bot.balance >= target && target <= a.est && (Math.random() < (a.bot==='Гоша' ? 0.55 : 0.8)) && (!S.leaderName || S.leaderName !== a.bot)){
+      placeBid(a.bot, target, true);
+    } else if(Math.random() < 0.35){
+      const botDef = BOTS.find(b=>b.n===a.bot);
+      sysMsg('💬 ' + a.bot + ': ' + (S.currentBid > a.est ? botDef.phrases[2] || 'Дороговато…' : REGRETS[Math.floor(Math.random()*REGRETS.length)]));
+    }
+  });
+  // таймер тишины
+  if(now - S.lastBidTs > 10000){ resolveLot(); }
+}
+
+function placeBid(name, amount, silent){
+  const p = S.players[name];
+  if(!p || p.exited || S.waitingNext) return;
+  const min = S.leaderName ? S.currentBid + 5 : 5;
+  if(amount < min || amount > p.balance) return;
+  p.balance -= 0; // списываем только при победе
+  S.currentBid = amount; S.leader = name; S.leaderName = name;
+  S.lastBidTs = Date.now();
+  if(!silent) sysMsg('🔨 ' + name + ' ставит $' + amount);
+  save();
+}
+
+function humanBid(add){
+  const me = myPlayer();
+  if(!me || me.exited || S.waitingNext || S.finished) return;
+  const target = (S.leaderName ? S.currentBid : 0) + add;
+  if(target > me.balance){ document.getElementById('noMoneyHint').style.display='block'; return; }
+  document.getElementById('noMoneyHint').style.display='none';
+  placeBid(myName, target, false);
+}
+
+function resolveLot(){
+  if(S.leaderName){
+    const winner = S.players[S.leaderName];
+    if(winner){
+      winner.balance -= S.currentBid;
+      const lot = LOTS[S.lotIdx];
+      winner.items.push({n:lot.n, e:lot.e, paid:S.currentBid, real:lot.p});
+      sysMsg('🔨 Продано! ' + lot.e + ' ' + lot.n + ' уходит к ' + S.leaderName + ' за $' + S.currentBid);
+      const botDef = BOTS.find(b=>b.n===S.leaderName);
+      if(botDef) sysMsg('💬 ' + S.leaderName + ': ' + botDef.phrases[Math.floor(Math.random()*2)]);
+      else sysMsg('💬 ' + S.leaderName + ': Отличная сделка!');
+    }
+  } else {
+    sysMsg('🔨 Молото́к! Никто не рискнул — лот не продан.');
+  }
+  S.waitingNext = true;
+  S.nextLotTs = Date.now() + 3000;
+  save();
+}
+
+function finish(){
+  S.finished = true;
+  sysMsg('🏁 Аукцион завершён! Настоящие цены раскрыты.');
+  save();
+}
+
+// выход с продажей вещей
+document.getElementById('exitBtn').addEventListener('click', () => {
+  const me = myPlayer();
+  if(!me || me.exited || S.finished) return;
+  let sum = 0;
+  me.items.forEach(it => sum += it.real);
+  if(me.items.length){
+    sysMsg('💸 ' + myName + ' продал антиквару: ' + me.items.map(it=>it.e).join(' ') + ' за $' + sum);
+    me.balance += sum;
+    me.items = [];
+  } else {
+    sysMsg('🚪 ' + myName + ' покинул аукцион без вещей.');
+  }
+  me.exited = true;
+  if(S.leaderName === myName){ S.leaderName = null; S.leader = null; }
+  save(); renderAll(true);
+});
+
+// ставки
+document.querySelectorAll('.bet-btn').forEach(b => b.addEventListener('click', () => humanBid(+b.dataset.add)));
+document.getElementById('passBtn').addEventListener('click', () => {
+  if(S && !S.finished && !S.waitingNext) sysMsg('😴 ' + myName + ' пасует');
+});
+
+// ================== ЧАТ ==================
+const chatLog = document.getElementById('chatLog');
+const chatInput = document.getElementById('chatInput');
+function sysMsg(text){ if(S){ S.chat.push({who:'', text, type:'sys', ts:Date.now()}); } }
+function pushChat(text){ if(!S) return; S.chat.push({who:myName, text, type:'me', ts:Date.now()}); save(); }
+function sendChat(){
+  const t = chatInput.value.trim();
+  if(t && S && !S.finished){ pushChat(t); chatInput.value=''; renderChat(true); }
+}
+document.getElementById('chatSend').addEventListener('click', sendChat);
+chatInput.addEventListener('keydown', e => { if(e.key==='Enter') sendChat(); });
+
+function renderChat(force){
+  if(!S) return;
+  if(!force && S.chat.length === lastChatLen) return;
+  lastChatLen = S.chat.length;
+  chatLog.innerHTML = '';
+  S.chat.slice(-60).forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'msg ' + (m.type || (m.who===myName ? 'me':'other'));
+    if(m.type === 'sys'){ div.textContent = m.text; }
+    else { div.innerHTML = '<span class="who"></span>' + esc(m.text); div.querySelector('.who').textContent = m.who; }
+    chatLog.appendChild(div);
+  });
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+function esc(s){ return String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
+
+// ================== РЕНДЕР ==================
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function renderAll(force){
+  if(!S) return;
+  const me = myPlayer(); if(!me) return;
+  document.getElementById('lotInfo').textContent = S.finished ? 'Игра окончена' : ('Лот ' + (Math.max(0,S.lotIdx)+1) + '/10');
+  document.getElementById('moneyInfo').textContent = '💰 $' + me.balance;
+  document.getElementById('exitBtn').style.display = me.exited || S.finished ? 'none' : '';
+  if(!S.finished){
+    const lot = LOTS[Math.max(0,S.lotIdx)];
+    document.getElementById('itemEmoji').textContent = lot.e;
+    document.getElementById('itemName').textContent = lot.n;
+    document.getElementById('itemDesc').textContent = lot.d;
+    document.getElementById('bidPrice').textContent = '$' + S.currentBid;
+    const leaderEl = document.getElementById('bidLeader');
+    const noneEl = document.getElementById('bidNone');
+    if(S.leaderName){ leaderEl.style.display='block'; leaderEl.textContent = '👑 Лидер: ' + S.leaderName; noneEl.style.display='none'; }
+    else { leaderEl.style.display='none'; noneEl.style.display='block'; }
+    const remain = Math.max(0, 10000 - (Date.now() - S.lastBidTs));
+    document.getElementById('timerFill').style.width = (remain/100) + '%';
+    const canBid = !me.exited && !S.waitingNext;
+    document.querySelectorAll('.bet-btn').forEach(b => b.disabled = !canBid || ((S.leaderName?S.currentBid:0) + +b.dataset.add) > me.balance);
+    document.getElementById('passBtn').disabled = !canBid;
+    const noMoney = !me.exited && !S.waitingNext && 5 > me.balance;
+    document.getElementById('noMoneyHint').style.display = noMoney ? 'block' : (me.exited ? 'none' : 'none');
+    document.getElementById('soldBanner').textContent = S.waitingNext ? (S.leaderName ? 'Продано!' : 'Лот не продан') : '';
+    document.getElementById('soldBanner').style.opacity = S.waitingNext ? 1 : 0;
+    const items = me.items.map(it => it.e + ' $' + it.paid).join('  ');
+    document.getElementById('portfolio').textContent = me.exited ? 'Вы вышли из торгов' : (items ? '🏆 Ваши вещи: ' + items : 'Вещей пока нет');
+    document.getElementById('exitBtn').textContent = me.items.length ? '🚪 Продать вещи и выйти' : '🚪 Выйти из аукциона';
+  }
+  renderChat(force);
+}
+
+function renderFinal(){
+  show('final');
+  const rows = Object.keys(S.players).map(name => {
+    const p = S.players[name];
+    let capital = p.balance, things = '—';
+    if(p.exited){ things = 'проданы'; }
+    else if(p.items.length){ things = p.items.map(it=>it.e+'$'+it.real).join(' '); capital += p.items.reduce((s,it)=>s+it.real,0); }
+    return {name, capital, things, bot:p.isBot};
+  }).sort((a,b)=>b.capital-a.capital);
+  const medals = ['🥇','🥈','🥉'];
+  document.getElementById('resultsBody').innerHTML = rows.map((r,i) =>
+    '<tr class="' + (i===0?'gold':'') + '"><td>' + (medals[i]||(i+1)) + '</td><td>' + esc(r.name) + '</td><td>$' + r.capital + '</td><td>' + esc(r.things) + '</td><td><b>$' + r.capital + '</b></td></tr>'
+  ).join('');
+}
+
+document.getElementById('againBtn').addEventListener('click', () => {
+  localStorage.removeItem(KEY);
+  S = null; lastChatLen = -1; lastRenderedVer = -1;
+  show('start');
+  const h = document.getElementById('joinHint'); h.textContent='';
+});
+
+// ================== ГЛАВНЫЙ ЦИКЛ ==================
+function tick(){
+  load();
+  if(!S){ return; }
+  // хост: тик игры (боты, таймер)
+  const now = Date.now();
+  if(S.hostToken === myToken){
+    S.hostTs = now;
+    if(S.lotIdx === -1){ startLot(); }
+    else if(S.waitingNext && now >= S.nextLotTs){ startLot(); }
+    else if(!S.waitingNext && !S.finished){ hostTick(); }
+    save();
+  } else {
+    // если хост пропал — перехватываем роль
+    if(now - S.hostTs > 4000){
+      S.hostToken = myToken; S.hostTs = now; save();
+      isHost = true;
+    }
+  }
+  if(S.finished && document.getElementById('game').classList.contains('active')){ renderFinal(); return; }
+  if(document.getElementById('game').classList.contains('active')){
+    renderAll(S.version !== lastRenderedVer);
+    lastRenderedVer = S.version;
+  }
+}
+
+// восстановление вкладки
+(function init(){
+  myName = sessionStorage.getItem('auction_name');
+  myToken = sessionStorage.getItem('auction_token');
+  load();
+  if(S && !S.finished && myName && S.players[myName] && !S.players[myName].exited){
+    show('game'); renderAll(true);
+  } else if(S && S.finished && myName){
+    renderFinal();
+  }
+  joinHint.textContent = S && !S.finished ? 'Игра уже идёт — введи имя и присоединишься к торгам!' : '';
+})();
+
+setInterval(tick, 400);
+</script>
+</body>
+</html>
